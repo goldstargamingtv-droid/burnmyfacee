@@ -1,40 +1,51 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export const POST = async (req: NextRequest) => {
-  const { image, facts } = await req.json();
+export async function POST(req: NextRequest) {
+  try {
+    const { image, facts } = await req.json();
 
-  const res = await fetch('https://api.x.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${process.env.GROK_API_KEY}`,
-    },
-    body: JSON.stringify({
-      model: 'grok-beta',
-      messages: [
-        {
+    // Clean base64 for Grok
+    let cleanImage = image;
+    if (image.startsWith('data:image')) {
+      cleanImage = image;
+    } else {
+      cleanImage = `data:image/jpeg;base64,${image.split(',')[1]}`;
+    }
+
+    const response = await fetch('https://api.x.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROK_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'grok-beta',
+        messages: [{
           role: 'user',
           content: [
             {
               type: 'text',
-              text: `Roast this person as brutally and hilariously as possible. No mercy, make it viral-worthy. Extra facts: ${facts || 'none'}`,
+              text: `Roast this person brutally and hilariously based on their photo. Make it viral, savage, no mercy. Use these facts if provided: ${facts || 'none'}. Keep it under 200 words.`
             },
             {
               type: 'image_url',
-              image_url: { url: image },
-            },
-          ],
-        },
-      ],
-      max_tokens: 600,
-      temperature: 1.0,
-    }),
-  });
+              image_url: { url: cleanImage }
+            }
+          ]
+        }],
+        max_tokens: 300,
+        temperature: 1.0,
+      }),
+    });
 
-  const data = await res.json();
-  const roast = data.choices?.[0]?.message?.content || "Even Grok ran away screaming.";
+    if (!response.ok) throw new Error(`API error: ${response.statusText}`);
 
-  return Response.json({ roast });
-};
+    const data = await response.json();
+    const roast = data.choices[0]?.message?.content || 'Grok refused—your face broke the AI.';
 
-export const runtime = 'edge';
+    return NextResponse.json({ roast });
+  } catch (error) {
+    console.error('Roast error:', error);
+    return NextResponse.json({ error: 'Roast failed—try again' }, { status: 500 });
+  }
+}
