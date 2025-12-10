@@ -1,4 +1,4 @@
-import './globals.css';
+import './globals.css';  // This line makes Tailwind work
 
 export default function RootLayout({
   children,
@@ -6,8 +6,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="h-full">
-      <body className="h-full bg-black text-white antialiased">{children}</body>
+    <html lang="en">
+      <body className="bg-black text-white">{children}</body>
     </html>
   );
 }
