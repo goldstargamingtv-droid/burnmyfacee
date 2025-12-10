@@ -2,8 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Makes the flame title actually show color */
 @layer utilities {
-  .flame-gradient {
+  .flame-text {
     @apply bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent;
   }
 }
