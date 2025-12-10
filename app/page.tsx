@@ -7,18 +7,32 @@ export default function Home() {
   const [facts, setFacts] = useState('');
   const [roast, setRoast] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleFile = (file: File) => {
     if (file && file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onloadend = () => setPreview(reader.result as string);
       reader.readAsDataURL(file);
+      setError('');
+    } else {
+      setError('Upload a valid image (JPG/PNG/GIF).');
     }
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleFile(file);
+  };
+
   const roastMe = async () => {
-    if (!preview) return;
+    if (!preview) {
+      setError('Upload a photo first!');
+      return;
+    }
     setLoading(true);
+    setError('');
     setRoast('');
 
     try {
@@ -27,11 +41,12 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: preview, facts }),
       });
-
+      if (!res.ok) throw new Error('Roast failed');
       const data = await res.json();
-      setRoast(data.roast || 'Grok took one look and needed therapy.');
+      setRoast(data.roast || 'Grok bailed—your face is too much even for AI.');
     } catch (e) {
-      setRoast('API error — try again in a sec.');
+      setError('Roast timed out—try a smaller photo or refresh.');
+      console.error(e);
     }
     setLoading(false);
   };
@@ -39,77 +54,69 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6">
       <div className="max-w-2xl w-full text-center">
-
-        {/* FIRE TITLE */}
-        <h1 className="text-6xl md:text-8xl font-black bg-gradient-to-r from-red-500 via-orange-500 to-yellow-500 bg-clip-text text-transparent mb-8">
+        <h1 className="text-6xl md:text-8xl font-black flame-gradient mb-4">
           BURN MY FACE
         </h1>
-        <p className="text-xl md:text-2xl text-gray-300 mb-12">
-          Drop a selfie. Spill the tea. Get absolutely destroyed by Grok.
+        <p className="text-xl mb-8 text-gray-300">
+          Upload a selfie + facts. Grok destroys you. Share the pain.
         </p>
 
-        {/* DRAG & DROP ZONE */}
+        {/* Upload Zone */}
         <div
-          className="relative border-4 border-dashed border-red-600 rounded-3xl p-12 mb-8 cursor-pointer hover:border-orange-500 transition-all bg-gray-950/50 backdrop-blur"
+          className="upload-zone"
           onDragOver={(e) => e.preventDefault()}
-          onDrop={(e) => {
-            e.preventDefault();
-            const file = e.dataTransfer.files[0];
-            if (file) handleFile(file);
-          }}
-          onClick={() => document.getElementById('file')?.click()}
+          onDrop={handleDrop}
+          onClick={() => document.getElementById('fileInput')?.click()}
         >
           {preview ? (
-            <img src={preview} alt="Your face" className="mx-auto max-h-96 rounded-2xl shadow-2xl" />
+            <img src={preview} alt="Preview" className="mx-auto max-h-64 rounded-xl shadow-2xl" />
           ) : (
-            <div className="text-gray-500">
-              <p className="text-3xl mb-4">Drop your mug here</p>
-              <p className="text-lg">or click to upload · JPG/PNG/GIF</p>
+            <div>
+              <p className="text-2xl mb-2">📸 Drop your ugly mug here or click</p>
+              <p className="text-gray-400">Supports JPG, PNG, GIF</p>
             </div>
           )}
           <input
-            id="file"
+            id="fileInput"
             type="file"
             accept="image/*"
-            onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+            onChange={(e) => e.target.files && handleFile(e.target.files[0])}
             className="hidden"
           />
         </div>
 
-        {/* FACTS BOX
+        {error && <p className="text-red-500 mb-4">{error}</p>}
+
+        {/* Facts */}
         <textarea
           value={facts}
           onChange={(e) => setFacts(e.target.value)}
-          placeholder="Optional ammo for Grok (e.g. '30, lives with mom, cries at Pixar movies')"
-          className="w-full max-w-xl p-5 rounded-2xl bg-gray-900 border border-gray-800 focus:border-red-600 focus:outline-none text-lg resize-none mb-8 placeholder-gray-600"
+          placeholder="Optional: ammo for Grok (e.g., '30yo virgin, bad tattoos, cries at Disney')"
+          className="w-full p-4 bg-gray-900 border border-gray-700 rounded-xl focus:border-red-500 focus:outline-none mb-6 text-lg placeholder-gray-500 resize-none"
           rows={3}
+          maxLength={200}
         />
 
-        {/* ROAST BUTTON */}
-        <button
-          onClick={roastMe}
-          disabled={loading || !preview}
-          className="w-full max-w-xl py-6 text-3xl font-bold rounded-2xl bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 disabled:opacity-50 transform hover:scale-105 transition-all shadow-2xl"
-        >
-          {loading ? 'ROASTING...' : 'ROAST ME'}
+        {/* Roast Button */}
+        <button onClick={roastMe} disabled={loading || !preview} className="roast-btn mb-6">
+          {loading ? '🔥 ROASTING...' : 'ROAST ME 🔥'}
         </button>
 
-        {/* RESULT */}
+        {/* Result */}
         {roast && (
-          <div className="mt-12 p-8 bg-gray-900/80 rounded-3xl border border-red-800 max-w-3xl">
-            <p className="text-2xl leading-relaxed whitespace-pre-wrap">{roast}</p>
+          <div className="result-box">
+            <h3 className="text-2xl font-bold mb-4 text-orange-500">Your Roast:</h3>
+            <p className="text-lg whitespace-pre-wrap mb-4">{roast}</p>
             <button
-              onClick={() => navigator.clipboard.writeText(roast)}
-              className="mt-6 px-8 py-3 bg-blue-600 rounded-xl hover:bg-blue-700 transition"
+              onClick={() => navigator.clipboard.writeText(roast) && alert('Copied! Share the L.')}
+              className="px-6 py-2 bg-blue-600 rounded-lg hover:bg-blue-700"
             >
-              Copy & Share This Roast
+              Copy & Share
             </button>
           </div>
         )}
 
-        <p className="mt-16 text-gray-600 text-sm">
-          Powered by Grok • No feelings were spared in the making of this app
-        </p>
+        <p className="mt-12 text-gray-500 text-sm">Powered by Grok AI • Victims today: 0 (soon to change)</p>
       </div>
     </main>
   );
