@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Burn My Face - AI Roast Generator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Arial', sans-serif; background: linear-gradient(135deg, #000, #1a0000); color: white; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .container { max-width: 600px; text-align: center; }
+    h1 { font-size: 4rem; background: linear-gradient(45deg, #ff6b6b, #ff8c00, #ff0000); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 10px; animation: glow 2s ease-in-out infinite alternate; }
+    @keyframes glow { from { text-shadow: 0 0 5px #ff0000; } to { text-shadow: 0 0 20px #ff6b6b; } }
+    p { font-size: 1.2rem; color: #ccc; margin-bottom: 20px; }
+    .upload-zone { border: 3px dashed #ff6b6b; border-radius: 20px; padding: 40px; margin: 20px 0; background: rgba(255, 107, 107, 0.1); cursor: pointer; transition: all 0.3s; }
+    .upload-zone:hover { border-color: #ff8c00; background: rgba(255, 140, 0, 0.1); transform: scale(1.02); }
+    .upload-zone.dragover { border-color: #ff0000; background: rgba(255, 0, 0, 0.2); }
+    #preview { max-width: 100%; max-height: 300px; border-radius: 10px; margin: 10px 0; display: none; }
+    textarea { width: 100%; padding: 15px; border: 1px solid #ff6b6b; border-radius: 10px; background: #111; color: white; font-size: 1rem; margin: 10px 0; resize: vertical; }
+    button { width: 100%; padding: 15px; font-size: 1.5rem; font-weight: bold; border: none; border-radius: 10px; background: linear-gradient(45deg, #ff6b6b, #ff8c00); color: white; cursor: pointer; transition: all 0.3s; margin: 10px 0; }
+    button:hover:not(:disabled) { background: linear-gradient(45deg, #ff8c00, #ff0000); transform: scale(1.05); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .loading { display: none; text-align: center; font-size: 1.2rem; color: #ff6b6b; animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .result { margin-top: 20px; padding: 20px; background: rgba(255, 107, 107, 0.1); border-radius: 10px; border-left: 4px solid #ff6b6b; text-align: left; display: none; }
+    .error { color: #ff0000; margin: 10px 0; }
+    .share-btn { background: #1da1f2; width: auto; padding: 10px 20px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>BURN MY FACE</h1>
+    <p>Upload a selfie + facts. Grok roasts you mercilessly.</p>
+    <div class="upload-zone" id="uploadZone">
+      <p id="uploadText">📸 Drop your photo here or click to upload</p>
+      <p>Supports JPG, PNG, GIF</p>
+      <img id="preview" src="" alt="Preview">
+    </div>
+    <input type="file" id="fileInput" accept="image/*" style="display: none;">
+    <textarea id="factsInput" placeholder="Optional facts for the roast (e.g., '30yo, bad haircut, lives with cats')" rows="3"></textarea>
+    <button id="roastBtn" disabled>ROAST ME 🔥</button>
+    <div class="loading" id="loading">Cooking your roast...</div>
+    <div class="result" id="result">
+      <h3>Your Destruction:</h3>
+      <p id="roastText"></p>
+      <button class="share-btn" onclick="shareRoast()">Share on X/TikTok</button>
+    </div>
+    <p style="margin-top: 30px; color: #666; font-size: 0.9rem;">Powered by Grok AI</p>
+  </div>
+
+  <script>
+    const GROK_API_KEY = prompt("Paste your Grok API key here (it won't be saved):")?.trim();
+if (!GROK_API_KEY) {
+  alert("No key = no roast");
+  throw new Error("Missing API key");
+}
+    const uploadZone = document.getElementById('uploadZone');
+    const fileInput = document.getElementById('fileInput');
+    const preview = document.getElementById('preview');
+    const uploadText = document.getElementById('uploadText');
+    const roastBtn = document.getElementById('roastBtn');
+    const loading = document.getElementById('loading');
+    const result = document.getElementById('result');
+    const roastText = document.getElementById('roastText');
+    const factsInput = document.getElementById('factsInput');
+    let selectedImage = null;
+
+    // Drag & drop
+    uploadZone.addEventListener('click', () => fileInput.click());
+    uploadZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadZone.classList.add('dragover');
+    });
+    uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+    uploadZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+
+    function handleFile(file) {
+      if (file.type.startsWith('image/')) {
+        selectedImage = file;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          preview.src = e.target.result;
+          preview.style.display = 'block';
+          uploadText.style.display = 'none';
+          roastBtn.disabled = false;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    roastBtn.addEventListener('click', async () => {
+      if (!selectedImage) return;
+      roastBtn.disabled = true;
+      loading.style.display = 'block';
+      result.style.display = 'none';
+
+      const facts = factsInput.value || 'none';
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64 = e.target.result.split(',')[1]; // Clean base64
+        try {
+          const res = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${GROK_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: 'grok-beta',
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'text', text: `Roast this person brutally and hilariously based on their photo. Use these facts: ${facts}. Make it viral, savage, under 200 words.` },
+                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64}` } }
+                ]
+              }],
+              max_tokens: 300,
+              temperature: 1.0,
+            }),
+          });
+          const data = await res.json();
+          const roast = data.choices[0]?.message?.content || 'Grok bailed—your face is too powerful.';
+          roastText.textContent = roast;
+          result.style.display = 'block';
+        } catch (err) {
+          roastText.textContent = 'Roast failed—check API key or try again.';
+          result.style.display = 'block';
+        }
+        loading.style.display = 'none';
+        roastBtn.disabled = false;
+      };
+      reader.readAsDataURL(selectedImage);
+    });
+
+    function shareRoast() {
+      const text = roastText.textContent;
+      if (navigator.share) {
+        navigator.share({ title: 'My AI roast', text });
+      } else {
+        navigator.clipboard.writeText(text);
+        alert('Copied roast—share on X/TikTok!');
+      }
+    }
+  </script>
+</body>
+</html>
